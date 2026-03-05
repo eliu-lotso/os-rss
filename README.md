@@ -1,37 +1,31 @@
-# Apple OS Release RSS to Slack
+# Apple OS Release RSS Feed
 
-通过 GitHub Actions 定时监控 [Apple Developer Releases RSS](https://developer.apple.com/news/releases/rss/releases.rss)，过滤 iOS / macOS / iPadOS / watchOS 的正式版和测试版更新，推送到 Slack。
+通过 GitHub Actions 定时拉取 [Apple Developer Releases RSS](https://developer.apple.com/news/releases/rss/releases.rss)，过滤出 iOS / macOS / iPadOS / watchOS 的正式版和测试版更新，生成一个干净的 RSS Feed，托管在 GitHub Pages 上。
 
-## 功能
+## 订阅地址
 
-- 每 15 分钟自动检查 RSS 更新
-- 支持手动触发（可强制推送最新 N 条）
-- 关键词过滤：只推送 iOS、macOS、iPadOS、watchOS 相关条目
-- 自动去重，避免重复推送
+```
+https://eliu-lotso.github.io/os-system/feed.xml
+```
 
-## 配置步骤
+### 在 Slack 中订阅
 
-1. **创建 Slack Incoming Webhook**
-   - 前往 [Slack API](https://api.slack.com/apps) 创建一个 App
-   - 启用 Incoming Webhooks，选择目标频道，获取 Webhook URL
+在任意频道输入：
 
-2. **Fork 或克隆本仓库**
+```
+/feed subscribe https://eliu-lotso.github.io/os-system/feed.xml
+```
 
-3. **配置 Repository Secret**
-   - 进入仓库 Settings > Secrets and variables > Actions
-   - 添加 `SLACK_WEBHOOK_URL`，值为第 1 步获取的 Webhook URL
+### 在其他 RSS 阅读器中订阅
 
-4. **给 Actions 写权限**
-   - 进入仓库 Settings > Actions > General > Workflow permissions
-   - 选择 "Read and write permissions"
+将上面的 URL 添加到任意 RSS 阅读器（Feedly、Inoreader、NetNewsWire 等）即可。
 
-5. **完成** — Actions 会按 cron 自动运行，也可在 Actions 页面手动触发
+## 工作原理
 
-## 手动触发
-
-在 GitHub Actions 页面点击 "Run workflow"，可选参数：
-
-- `force`：设为 `true` 忽略去重记录，强制推送当前 RSS 中的最新条目
+- GitHub Actions 每 15 分钟拉取一次 Apple Developer Releases RSS
+- 过滤出标题以 iOS / macOS / iPadOS / watchOS 开头的条目
+- 生成过滤后的 RSS XML 文件到 `docs/feed.xml`
+- 通过 GitHub Pages 托管为公开 URL
 
 ## 自定义过滤
 
@@ -41,7 +35,7 @@
 
 | 文件 | 用途 |
 |------|------|
-| `rss_to_slack.py` | 主脚本：拉取 RSS、过滤、推送 Slack |
+| `rss_filter.py` | 主脚本：拉取 RSS、过滤、生成 XML |
 | `feeds.yml` | RSS 源地址与过滤关键词配置 |
-| `sent_items.json` | 已推送条目记录（自动维护） |
+| `docs/feed.xml` | 生成的过滤后 RSS（自动维护） |
 | `.github/workflows/rss-to-slack.yml` | GitHub Actions 工作流 |
