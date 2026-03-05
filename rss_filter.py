@@ -110,20 +110,17 @@ def parse_title(title: str) -> dict | None:
     }
 
 
-def format_title(info: dict) -> str:
-    tag = f"{info['pre_label']}" if info["is_beta"] else ""
-    return f"{info['emoji']} {info['os']} {info['version']}{tag}"
-
-
-def format_description(info: dict, pub_date: str) -> str:
+def format_title(info: dict, pub_date: str) -> str:
+    tag = info["pre_label"] if info["is_beta"] else ""
     release_type = "\U0001f7e1 测试版" if info["is_beta"] else "\U0001f7e2 正式版"
-    lines = [
-        release_type,
-        f"Build: {info['build']}",
+    parts = [
+        f"{info['emoji']} {info['os']} {info['version']}{tag}",
     ]
     if pub_date:
-        lines.append(f"\U0001f4c5 {pub_date}")
-    return "\n".join(lines)
+        parts.append(f"\U0001f4c5 {pub_date}")
+    parts.append(release_type)
+    parts.append(f"Build: {info['build']}")
+    return " | ".join(parts)
 
 
 def format_pub_date_short(entry) -> str:
@@ -160,12 +157,10 @@ def build_rss_xml(feed_meta, entries: list) -> ElementTree:
         SubElement(item, "pubDate").text = entry.get("published", "")
 
         if info:
-            SubElement(item, "title").text = format_title(info)
             pub_date = format_pub_date_short(entry)
-            SubElement(item, "description").text = format_description(info, pub_date)
+            SubElement(item, "title").text = format_title(info, pub_date)
         else:
             SubElement(item, "title").text = raw_title
-            SubElement(item, "description").text = entry.get("summary", "")
 
     indent(rss, space="  ")
     return ElementTree(rss)
