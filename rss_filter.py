@@ -32,13 +32,6 @@ TITLE_RE = re.compile(
     r"^(iOS|macOS|iPadOS|watchOS)\s+([\d.]+)\s*(?:(beta|RC)\s*(\d*)\s*)?\((\w+)\)$"
 )
 
-OS_EMOJI = {
-    "iOS": "\U0001f4f1",
-    "macOS": "\U0001f4bb",
-    "iPadOS": "\U0001f4f2",
-    "watchOS": "\u231a",
-}
-
 
 def matches_keywords(title: str, keywords: list[str]) -> bool:
     title_lower = title.lower()
@@ -108,22 +101,19 @@ def parse_title(title: str) -> Optional[dict]:
         "build": build,
         "is_beta": is_beta,
         "pre_label": pre_label,
-        "emoji": OS_EMOJI.get(os_name, "\U0001f34e"),
     }
 
 
 def format_title_line(info: dict) -> str:
-    """Concise title for the clickable header in Slack."""
     tag = info["pre_label"] if info["is_beta"] else ""
-    release_type = "\U0001f7e1 测试版" if info["is_beta"] else "\U0001f7e2 正式版"
-    return f"{info['emoji']} {info['os']} {info['version']}{tag} | {release_type}"
+    release_type = "测试版" if info["is_beta"] else "正式版"
+    return f"{info['os']} {info['version']}{tag} | {release_type}"
 
 
 def format_description_line(info: dict, pub_date: str) -> str:
-    """Supplementary details shown below the title in Slack."""
     parts = []
     if pub_date:
-        parts.append(f"\U0001f4c5 {pub_date}")
+        parts.append(pub_date)
     parts.append(f"Build: {info['build']}")
     return " | ".join(parts)
 
@@ -166,7 +156,7 @@ def build_rss_xml(entries: list, test_mode: bool = False) -> str:
 
     now = datetime.now(timezone.utc)
 
-    channel.appendChild(el("title", "\U0001f34e Apple OS Releases"))
+    channel.appendChild(el("title", "Apple OS Releases"))
     channel.appendChild(el("link", FEED_URL))
     channel.appendChild(el("description", "iOS, macOS, iPadOS, watchOS — 正式版与测试版更新推送"))
 
@@ -176,7 +166,16 @@ def build_rss_xml(entries: list, test_mode: bool = False) -> str:
     atom_link.setAttribute("type", "application/rss+xml")
     channel.appendChild(atom_link)
 
+    releases = []
+    betas = []
     for entry in entries:
+        info = parse_title(entry.get("title", ""))
+        if info and info["is_beta"]:
+            betas.append(entry)
+        else:
+            releases.append(entry)
+
+    def add_item(entry):
         raw_title = entry.get("title", "")
         info = parse_title(raw_title)
         pub_date_short = format_pub_date_short(entry)
@@ -189,7 +188,6 @@ def build_rss_xml(entries: list, test_mode: bool = False) -> str:
             desc_text = pub_date_short or raw_title
 
         item = doc.createElement("item")
-
         item.appendChild(el("title", title_text))
 
         link_url = entry.get("link", "")
@@ -216,6 +214,26 @@ def build_rss_xml(entries: list, test_mode: bool = False) -> str:
         item.appendChild(desc_node)
 
         channel.appendChild(item)
+
+    for entry in releases:
+        add_item(entry)
+
+    if releases and betas:
+        sep = doc.createElement("item")
+        sep.appendChild(el("title", "━━━ 测试版 ━━━"))
+        sep_pub = now.strftime("%a, %d %b %Y %H:%M:%S GMT")
+        sep.appendChild(el("pubDate", sep_pub))
+        sep_guid = doc.createElement("guid")
+        sep_guid.setAttribute("isPermaLink", "false")
+        sep_guid.appendChild(doc.createTextNode("separator-beta"))
+        sep.appendChild(sep_guid)
+        sep_desc = doc.createElement("description")
+        sep_desc.appendChild(doc.createCDATASection(" "))
+        sep.appendChild(sep_desc)
+        channel.appendChild(sep)
+
+    for entry in betas:
+        add_item(entry)
 
     return doc.toprettyxml(indent="  ")
 
@@ -254,10 +272,10 @@ def build_bark_summary(entries: list) -> tuple:
         if info:
             tag = info["pre_label"] if info["is_beta"] else ""
             release = "测试版" if info["is_beta"] else "正式版"
-            lines.append(f"{info['emoji']} {info['os']} {info['version']}{tag} {release}")
+            lines.append(f"{info['os']} {info['version']}{tag} {release}")
         else:
             lines.append(raw_title)
-    title = f"\U0001f34e Apple OS 更新 ({len(entries)})"
+    title = f"Apple OS 更新 ({len(entries)})"
     body = "\n".join(lines)
     return title, body
 
