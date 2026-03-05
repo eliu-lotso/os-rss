@@ -5,7 +5,8 @@ import re
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from xml.etree.ElementTree import Element, SubElement, ElementTree, indent
+from typing import Optional
+from xml.dom import minidom
 
 import feedparser
 import yaml
@@ -28,10 +29,10 @@ TITLE_RE = re.compile(
 )
 
 OS_EMOJI = {
-    "iOS": "\U0001f4f1",      # 📱
-    "macOS": "\U0001f4bb",    # 💻
-    "iPadOS": "\U0001f4f2",   # 📲
-    "watchOS": "\u231a",      # ⌚
+    "iOS": "\U0001f4f1",
+    "macOS": "\U0001f4bb",
+    "iPadOS": "\U0001f4f2",
+    "watchOS": "\u231a",
 }
 
 
@@ -41,10 +42,6 @@ def matches_keywords(title: str, keywords: list[str]) -> bool:
 
 
 def meets_min_version(title: str, min_version: int) -> bool:
-    """Check if the major version number in the title is >= min_version.
-
-    Parses titles like 'iOS 26.3.1 (23D8133)' or 'macOS 26.4 beta 3'.
-    """
     m = VERSION_RE.match(title)
     if not m:
         return False
@@ -90,7 +87,7 @@ def fetch_and_filter(feed_cfg: dict) -> tuple[dict, list]:
     return parsed.feed, filtered
 
 
-def parse_title(title: str) -> dict | None:
+def parse_title(title: str) -> Optional[dict]:
     m = TITLE_RE.match(title)
     if not m:
         return None
@@ -133,51 +130,81 @@ def format_pub_date_short(entry) -> str:
     return ""
 
 
-def build_rss_xml(feed_meta, entries: list, test_mode: bool = False) -> ElementTree:
-    rss = Element("rss", version="2.0")
-    rss.set("xmlns:atom", "http://www.w3.org/2005/Atom")
+def format_pub_date_gmt(entry) -> str:
+    """Convert entry's published_parsed to RFC 822 GMT format."""
+    if hasattr(entry, "published_parsed") and entry.published_parsed:
+        try:
+            dt = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
+            return dt.strftime("%a, %d %b %Y %H:%M:%S GMT")
+        except Exception:
+            pass
+    return datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S GMT")
 
-    channel = SubElement(rss, "channel")
-    SubElement(channel, "title").text = "\U0001f34e Apple OS Releases"
-    SubElement(channel, "link").text = FEED_URL
-    SubElement(channel, "description").text = (
-        "iOS, macOS, iPadOS, watchOS — 正式版与测试版更新推送"
-    )
-    atom_link = SubElement(channel, "atom:link")
-    atom_link.set("href", FEED_URL)
-    atom_link.set("rel", "self")
-    atom_link.set("type", "application/rss+xml")
-    SubElement(channel, "lastBuildDate").text = datetime.now(timezone.utc).strftime(
-        "%a, %d %b %Y %H:%M:%S GMT"
-    )
+
+def build_rss_xml(entries: list, test_mode: bool = False) -> str:
+    """Build RSS XML string using minidom (matching qweather's working format)."""
+    impl = minidom.getDOMImplementation()
+    doc = impl.createDocument(None, "rss", None)
+    rss = doc.documentElement
+    rss.setAttribute("version", "2.0")
+    rss.setAttribute("xmlns:atom", "http://www.w3.org/2005/Atom")
+
+    channel = doc.createElement("channel")
+    rss.appendChild(channel)
+
+    def el(tag, text):
+        node = doc.createElement(tag)
+        node.appendChild(doc.createTextNode(text))
+        return node
+
+    now = datetime.now(timezone.utc)
+
+    channel.appendChild(el("title", "\U0001f34e Apple OS Releases"))
+    channel.appendChild(el("link", FEED_URL))
+    channel.appendChild(el("description", "iOS, macOS, iPadOS, watchOS — 正式版与测试版更新推送"))
+
+    atom_link = doc.createElement("atom:link")
+    atom_link.setAttribute("href", FEED_URL)
+    atom_link.setAttribute("rel", "self")
+    atom_link.setAttribute("type", "application/rss+xml")
+    channel.appendChild(atom_link)
 
     for entry in entries:
         raw_title = entry.get("title", "")
         info = parse_title(raw_title)
 
-        item = SubElement(channel, "item")
-        SubElement(item, "link").text = entry.get("link", "")
+        if info:
+            pub_date_short = format_pub_date_short(entry)
+            title_text = format_title(info, pub_date_short)
+        else:
+            title_text = raw_title
+
+        item = doc.createElement("item")
+
+        item.appendChild(el("title", title_text))
+
+        if test_mode:
+            pub_date_rfc = now.strftime("%a, %d %b %Y %H:%M:%S GMT")
+        else:
+            pub_date_rfc = format_pub_date_gmt(entry)
+        item.appendChild(el("pubDate", pub_date_rfc))
 
         guid_value = entry.get("id") or entry.get("link", "")
         if test_mode:
-            test_ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+            test_ts = now.strftime("%Y%m%dT%H%M%S")
             guid_value = f"test-{test_ts}-{guid_value}"
-        guid_el = SubElement(item, "guid")
-        guid_el.text = guid_value
-        guid_el.set("isPermaLink", "false")
+        guid_node = doc.createElement("guid")
+        guid_node.setAttribute("isPermaLink", "false")
+        guid_node.appendChild(doc.createTextNode(guid_value))
+        item.appendChild(guid_node)
 
-        SubElement(item, "pubDate").text = entry.get("published", "")
+        desc_node = doc.createElement("description")
+        desc_node.appendChild(doc.createCDATASection(title_text))
+        item.appendChild(desc_node)
 
-        if info:
-            pub_date = format_pub_date_short(entry)
-            SubElement(item, "title").text = format_title(info, pub_date)
-            SubElement(item, "description").text = format_title(info, pub_date)
-        else:
-            SubElement(item, "title").text = raw_title
-            SubElement(item, "description").text = raw_title
+        channel.appendChild(item)
 
-    indent(rss, space="  ")
-    return ElementTree(rss)
+    return doc.toprettyxml(indent="  ")
 
 
 def main():
@@ -200,10 +227,11 @@ def main():
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    tree = build_rss_xml({}, all_entries, test_mode=args.test)
-    tree.write(OUTPUT_PATH, encoding="unicode", xml_declaration=True)
+    xml_str = build_rss_xml(all_entries, test_mode=args.test)
+    with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
+        f.write(xml_str)
 
-    mode = " (TEST MODE - unique guids)" if args.test else ""
+    mode = " (TEST MODE)" if args.test else ""
     print(f"Generated {OUTPUT_PATH} with {len(all_entries)} item(s).{mode}")
 
 
