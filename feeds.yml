@@ -8,3 +8,4 @@ feeds:
         - "iPadOS"
         - "watchOS"
       min_version: 26
+      max_age_days: 5

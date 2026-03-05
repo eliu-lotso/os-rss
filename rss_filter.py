@@ -3,7 +3,7 @@
 
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from xml.etree.ElementTree import Element, SubElement, ElementTree, indent
 
@@ -40,11 +40,23 @@ def meets_min_version(title: str, min_version: int) -> bool:
     return int(m.group(2)) >= min_version
 
 
+def is_within_age(entry, max_age_days: int) -> bool:
+    if not hasattr(entry, "published_parsed") or not entry.published_parsed:
+        return True
+    try:
+        pub_dt = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
+        return pub_dt >= cutoff
+    except Exception:
+        return True
+
+
 def fetch_and_filter(feed_cfg: dict) -> tuple[dict, list]:
     url = feed_cfg["url"]
     filters = feed_cfg.get("filters", {})
     keywords = filters.get("keywords", [])
     min_version = filters.get("min_version")
+    max_age_days = filters.get("max_age_days")
 
     print(f"Fetching {url} ...")
     parsed = feedparser.parse(url)
@@ -59,6 +71,8 @@ def fetch_and_filter(feed_cfg: dict) -> tuple[dict, list]:
         if keywords and not matches_keywords(title, keywords):
             continue
         if min_version and not meets_min_version(title, min_version):
+            continue
+        if max_age_days and not is_within_age(entry, max_age_days):
             continue
         filtered.append(entry)
 
