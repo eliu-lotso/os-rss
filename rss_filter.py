@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Fetch Apple Developer Releases RSS, filter by keywords, and generate a filtered RSS feed."""
 
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -20,14 +21,30 @@ def load_config():
         return yaml.safe_load(f)
 
 
+VERSION_RE = re.compile(r"^(\w+)\s+(\d+)")
+
+
 def matches_keywords(title: str, keywords: list[str]) -> bool:
     title_lower = title.lower()
     return any(title_lower.startswith(kw.lower()) for kw in keywords)
 
 
+def meets_min_version(title: str, min_version: int) -> bool:
+    """Check if the major version number in the title is >= min_version.
+
+    Parses titles like 'iOS 26.3.1 (23D8133)' or 'macOS 26.4 beta 3'.
+    """
+    m = VERSION_RE.match(title)
+    if not m:
+        return False
+    return int(m.group(2)) >= min_version
+
+
 def fetch_and_filter(feed_cfg: dict) -> tuple[dict, list]:
     url = feed_cfg["url"]
-    keywords = feed_cfg.get("filters", {}).get("keywords", [])
+    filters = feed_cfg.get("filters", {})
+    keywords = filters.get("keywords", [])
+    min_version = filters.get("min_version")
 
     print(f"Fetching {url} ...")
     parsed = feedparser.parse(url)
@@ -40,6 +57,8 @@ def fetch_and_filter(feed_cfg: dict) -> tuple[dict, list]:
     for entry in parsed.entries:
         title = entry.get("title", "")
         if keywords and not matches_keywords(title, keywords):
+            continue
+        if min_version and not meets_min_version(title, min_version):
             continue
         filtered.append(entry)
 

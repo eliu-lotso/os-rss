@@ -7,3 +7,4 @@ feeds:
         - "macOS"
         - "iPadOS"
         - "watchOS"
+      min_version: 26

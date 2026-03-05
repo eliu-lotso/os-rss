@@ -5,7 +5,7 @@
     <link>https://developer.apple.com/news/releases/</link>
     <description>Filtered Apple Developer Releases: iOS, macOS, iPadOS, watchOS updates.</description>
     <language>en-US</language>
-    <lastBuildDate>Thu, 05 Mar 2026 03:47:35 GMT</lastBuildDate>
+    <lastBuildDate>Thu, 05 Mar 2026 03:50:58 GMT</lastBuildDate>
     <item>
       <title>iOS 26.3.1 (23D8133)</title>
       <link>https://developer.apple.com/news/releases/?id=03042026a</link>
@@ -26,13 +26,6 @@
       <guid>https://developer.apple.com/news/releases/?id=03042026c</guid>
       <pubDate>Wed, 04 Mar 2026 09:00:00 PST</pubDate>
       <description>View downloadsView release notes</description>
-    </item>
-    <item>
-      <title>iOS 18.7.6 (22H320)</title>
-      <link>https://developer.apple.com/news/releases/?id=03042026d</link>
-      <guid>https://developer.apple.com/news/releases/?id=03042026d</guid>
-      <pubDate>Wed, 04 Mar 2026 09:00:00 PST</pubDate>
-      <description>View downloads</description>
     </item>
     <item>
       <title>macOS 26.4 beta 3 (25E5223i)</title>
@@ -70,27 +63,6 @@
       <description>View downloadsView release notes</description>
     </item>
     <item>
-      <title>iPadOS 18.7.5 (22H311)</title>
-      <link>https://developer.apple.com/news/releases/?id=02042026h</link>
-      <guid>https://developer.apple.com/news/releases/?id=02042026h</guid>
-      <pubDate>Wed, 04 Feb 2026 09:00:00 PST</pubDate>
-      <description>View downloads</description>
-    </item>
-    <item>
-      <title>iOS 16.7.14 (20H370)</title>
-      <link>https://developer.apple.com/news/releases/?id=02022026a</link>
-      <guid>https://developer.apple.com/news/releases/?id=02022026a</guid>
-      <pubDate>Mon, 02 Feb 2026 09:00:00 PST</pubDate>
-      <description>View downloads</description>
-    </item>
-    <item>
-      <title>iPadOS 16.7.14 (20H370)</title>
-      <link>https://developer.apple.com/news/releases/?id=02022026b</link>
-      <guid>https://developer.apple.com/news/releases/?id=02022026b</guid>
-      <pubDate>Mon, 02 Feb 2026 09:00:00 PST</pubDate>
-      <description>View downloads</description>
-    </item>
-    <item>
       <title>iOS 26.2.1 (23C71)</title>
       <link>https://developer.apple.com/news/releases/?id=01262026a</link>
       <guid>https://developer.apple.com/news/releases/?id=01262026a</guid>
@@ -110,48 +82,6 @@
       <guid>https://developer.apple.com/news/releases/?id=01262026c</guid>
       <pubDate>Mon, 26 Jan 2026 09:00:00 PST</pubDate>
       <description>View downloadsView release notes</description>
-    </item>
-    <item>
-      <title>iOS 18.7.4 (22H218)</title>
-      <link>https://developer.apple.com/news/releases/?id=01262026d</link>
-      <guid>https://developer.apple.com/news/releases/?id=01262026d</guid>
-      <pubDate>Mon, 26 Jan 2026 09:00:00 PST</pubDate>
-      <description>View downloads</description>
-    </item>
-    <item>
-      <title>iPadOS 18.7.4 (22H218)</title>
-      <link>https://developer.apple.com/news/releases/?id=01262026e</link>
-      <guid>https://developer.apple.com/news/releases/?id=01262026e</guid>
-      <pubDate>Mon, 26 Jan 2026 09:00:00 PST</pubDate>
-      <description>View downloads</description>
-    </item>
-    <item>
-      <title>iOS 15.8.6 (19H402)</title>
-      <link>https://developer.apple.com/news/releases/?id=01262026h</link>
-      <guid>https://developer.apple.com/news/releases/?id=01262026h</guid>
-      <pubDate>Mon, 26 Jan 2026 09:00:00 PST</pubDate>
-      <description>View downloads</description>
-    </item>
-    <item>
-      <title>iPadOS 15.8.6 (19H402)</title>
-      <link>https://developer.apple.com/news/releases/?id=01262026i</link>
-      <guid>https://developer.apple.com/news/releases/?id=01262026i</guid>
-      <pubDate>Mon, 26 Jan 2026 09:00:00 PST</pubDate>
-      <description>View downloads</description>
-    </item>
-    <item>
-      <title>iOS 12.5.8 (16H88)</title>
-      <link>https://developer.apple.com/news/releases/?id=01262026j</link>
-      <guid>https://developer.apple.com/news/releases/?id=01262026j</guid>
-      <pubDate>Mon, 26 Jan 2026 09:00:00 PST</pubDate>
-      <description>View downloads</description>
-    </item>
-    <item>
-      <title>iPadOS 12.5.8 (16H88)</title>
-      <link>https://developer.apple.com/news/releases/?id=01262026k</link>
-      <guid>https://developer.apple.com/news/releases/?id=01262026k</guid>
-      <pubDate>Mon, 26 Jan 2026 09:00:00 PST</pubDate>
-      <description>View downloads</description>
     </item>
     <item>
       <title>macOS 26.2 (25C56)</title>
