@@ -166,33 +166,18 @@ def build_rss_xml(entries: list, test_mode: bool = False) -> str:
     atom_link.setAttribute("type", "application/rss+xml")
     channel.appendChild(atom_link)
 
-    releases = []
-    betas = []
     for entry in entries:
-        info = parse_title(entry.get("title", ""))
-        if info and info["is_beta"]:
-            betas.append(entry)
-        else:
-            releases.append(entry)
-
-    def add_item(entry):
         raw_title = entry.get("title", "")
         info = parse_title(raw_title)
         pub_date_short = format_pub_date_short(entry)
 
         if info:
             title_text = format_title_line(info)
-            desc_text = format_description_line(info, pub_date_short)
         else:
             title_text = raw_title
-            desc_text = pub_date_short or raw_title
 
         item = doc.createElement("item")
         item.appendChild(el("title", title_text))
-
-        link_url = entry.get("link", "")
-        if link_url:
-            item.appendChild(el("link", link_url))
 
         if test_mode:
             pub_date_rfc = now.strftime("%a, %d %b %Y %H:%M:%S GMT")
@@ -200,7 +185,7 @@ def build_rss_xml(entries: list, test_mode: bool = False) -> str:
             pub_date_rfc = format_pub_date_gmt(entry)
         item.appendChild(el("pubDate", pub_date_rfc))
 
-        guid_value = entry.get("id") or link_url
+        guid_value = entry.get("id") or entry.get("link", "")
         if test_mode:
             test_ts = now.strftime("%Y%m%dT%H%M%S")
             guid_value = f"test-{test_ts}-{guid_value}"
@@ -210,30 +195,10 @@ def build_rss_xml(entries: list, test_mode: bool = False) -> str:
         item.appendChild(guid_node)
 
         desc_node = doc.createElement("description")
-        desc_node.appendChild(doc.createCDATASection(desc_text))
+        desc_node.appendChild(doc.createCDATASection(title_text))
         item.appendChild(desc_node)
 
         channel.appendChild(item)
-
-    for entry in releases:
-        add_item(entry)
-
-    if releases and betas:
-        sep = doc.createElement("item")
-        sep.appendChild(el("title", "━━━ 测试版 ━━━"))
-        sep_pub = now.strftime("%a, %d %b %Y %H:%M:%S GMT")
-        sep.appendChild(el("pubDate", sep_pub))
-        sep_guid = doc.createElement("guid")
-        sep_guid.setAttribute("isPermaLink", "false")
-        sep_guid.appendChild(doc.createTextNode("separator-beta"))
-        sep.appendChild(sep_guid)
-        sep_desc = doc.createElement("description")
-        sep_desc.appendChild(doc.createCDATASection(" "))
-        sep.appendChild(sep_desc)
-        channel.appendChild(sep)
-
-    for entry in betas:
-        add_item(entry)
 
     return doc.toprettyxml(indent="  ")
 
