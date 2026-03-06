@@ -138,39 +138,8 @@ def format_pub_date_gmt(entry) -> str:
     return datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S GMT")
 
 
-MAX_ITEMS = 20
-
-
-def load_existing_items() -> list[ElementTree.Element]:
-    """Load existing <item> elements from the current feed.xml."""
-    if not OUTPUT_PATH.exists():
-        return []
-    try:
-        tree = ElementTree.parse(OUTPUT_PATH)
-        return list(tree.iter("item"))
-    except Exception:
-        return []
-
-
 def build_rss_xml(entries: list, test_mode: bool = False) -> str:
-    """Build RSS XML, appending new item and keeping history (up to MAX_ITEMS)."""
-    now = datetime.now(timezone.utc)
-    timestamp = now.strftime("%Y%m%dT%H%M%S")
-    pub_date_rfc = now.strftime("%a, %d %b %Y %H:%M:%S GMT")
-
-    lines = []
-    for entry in entries:
-        raw_title = entry.get("title", "")
-        info = parse_title(raw_title)
-        if info:
-            lines.append(format_title_line(info))
-        else:
-            lines.append(raw_title)
-
-    summary = " / ".join(lines) if lines else "No updates"
-
-    old_items = load_existing_items()
-
+    """Build RSS XML with a single item (matching qweather's proven format)."""
     impl = minidom.getDOMImplementation()
     doc = impl.createDocument(None, "rss", None)
     rss = doc.documentElement
@@ -185,10 +154,13 @@ def build_rss_xml(entries: list, test_mode: bool = False) -> str:
         node.appendChild(doc.createTextNode(text))
         return node
 
+    now = datetime.now(timezone.utc)
+    timestamp = now.strftime("%Y%m%dT%H%M%S")
+    pub_date_rfc = now.strftime("%a, %d %b %Y %H:%M:%S GMT")
+
     channel.appendChild(el("title", "Apple OS Releases"))
     channel.appendChild(el("link", FEED_URL))
     channel.appendChild(el("description", "iOS, macOS, iPadOS, watchOS — 正式版与测试版更新推送"))
-    channel.appendChild(el("lastBuildDate", pub_date_rfc))
 
     atom_link = doc.createElement("atom:link")
     atom_link.setAttribute("href", FEED_URL)
@@ -196,42 +168,33 @@ def build_rss_xml(entries: list, test_mode: bool = False) -> str:
     atom_link.setAttribute("type", "application/rss+xml")
     channel.appendChild(atom_link)
 
-    new_item = doc.createElement("item")
-    new_item.appendChild(el("title", f"Apple OS ({now.strftime('%m-%d %H:%M')})"))
-    new_item.appendChild(el("pubDate", pub_date_rfc))
+    lines = []
+    for entry in entries:
+        raw_title = entry.get("title", "")
+        info = parse_title(raw_title)
+        if info:
+            lines.append(format_title_line(info))
+        else:
+            lines.append(raw_title)
+
+    summary = " / ".join(lines) if lines else "No updates"
+
+    item = doc.createElement("item")
+    item.appendChild(el("title", f"Apple OS ({now.strftime('%m-%d %H:%M')})"))
+    item.appendChild(el("pubDate", pub_date_rfc))
 
     guid_node = doc.createElement("guid")
     guid_node.setAttribute("isPermaLink", "false")
     guid_node.appendChild(doc.createTextNode(f"os-{timestamp}"))
-    new_item.appendChild(guid_node)
+    item.appendChild(guid_node)
 
     desc_node = doc.createElement("description")
     desc_node.appendChild(doc.createCDATASection(summary))
-    new_item.appendChild(desc_node)
+    item.appendChild(desc_node)
 
-    channel.appendChild(new_item)
-
-    for old in old_items[:MAX_ITEMS - 1]:
-        imported = doc.importNode(_et_to_minidom(doc, old), True)
-        channel.appendChild(imported)
+    channel.appendChild(item)
 
     return doc.toprettyxml(indent="  ")
-
-
-def _et_to_minidom(doc: minidom.Document, et_elem: ElementTree.Element) -> minidom.Element:
-    """Convert an ElementTree <item> element to a minidom element."""
-    item = doc.createElement(et_elem.tag)
-    for child in et_elem:
-        child_node = doc.createElement(child.tag)
-        for attr_name, attr_val in child.attrib.items():
-            child_node.setAttribute(attr_name, attr_val)
-        if child.text:
-            if child.tag == "description":
-                child_node.appendChild(doc.createCDATASection(child.text))
-            else:
-                child_node.appendChild(doc.createTextNode(child.text))
-        item.appendChild(child_node)
-    return item
 
 
 def get_existing_guids() -> set:
