@@ -8,8 +8,8 @@
     <item>
       <title>RSS 测试推送 - 如果你看到这条说明订阅成功</title>
       <link>https://developer.apple.com/news/releases/</link>
-      <pubDate>Fri, 06 Mar 2026 02:45:00 GMT</pubDate>
-      <guid isPermaLink="false">os-test-20260306T024500</guid>
+      <pubDate>Fri, 06 Mar 2026 02:55:00 GMT</pubDate>
+      <guid isPermaLink="false">os-test-20260306T025500</guid>
       <description><![CDATA[这是一条测试消息，用于验证 RSS 订阅是否正常工作。如果你在阅读器中看到这条内容，说明订阅已经成功！]]></description>
     </item>
   </channel>
