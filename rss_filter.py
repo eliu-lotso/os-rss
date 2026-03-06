@@ -180,17 +180,27 @@ def build_rss_xml(entries: list, test_mode: bool = False) -> str:
     summary = " / ".join(lines) if lines else "No updates"
 
     item = doc.createElement("item")
-    item.appendChild(el("title", f"Apple OS ({now.strftime('%m-%d %H:%M')})"))
+
+    if test_mode:
+        item_title = f"[测试] Apple OS 推送测试 ({now.strftime('%m-%d %H:%M:%S')})"
+        item_guid = f"os-test-{timestamp}"
+        item_desc = f"这是一条测试推送 ({now.strftime('%Y-%m-%d %H:%M:%S UTC')})\n实际内容: {summary}"
+    else:
+        item_title = f"Apple OS ({now.strftime('%m-%d %H:%M')})"
+        item_guid = f"os-{timestamp}"
+        item_desc = summary
+
+    item.appendChild(el("title", item_title))
     item.appendChild(el("link", "https://developer.apple.com/news/releases/"))
     item.appendChild(el("pubDate", pub_date_rfc))
 
     guid_node = doc.createElement("guid")
     guid_node.setAttribute("isPermaLink", "false")
-    guid_node.appendChild(doc.createTextNode(f"os-{timestamp}"))
+    guid_node.appendChild(doc.createTextNode(item_guid))
     item.appendChild(guid_node)
 
     desc_node = doc.createElement("description")
-    desc_node.appendChild(doc.createCDATASection(summary))
+    desc_node.appendChild(doc.createCDATASection(item_desc))
     item.appendChild(desc_node)
 
     channel.appendChild(item)
