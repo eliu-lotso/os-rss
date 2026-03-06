@@ -5,7 +5,7 @@
 ## 订阅地址
 
 ```
-https://eliu-lotso.github.io/os-system/feed.xml
+https://eliu-lotso.github.io/os-rss/feed.xml
 ```
 
 ### 在 Slack 中订阅
@@ -13,7 +13,7 @@ https://eliu-lotso.github.io/os-system/feed.xml
 在任意频道输入：
 
 ```
-/feed subscribe https://eliu-lotso.github.io/os-system/feed.xml
+/feed subscribe https://eliu-lotso.github.io/os-rss/feed.xml
 ```
 
 ### 在其他 RSS 阅读器中订阅
