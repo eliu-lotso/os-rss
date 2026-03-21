@@ -6,28 +6,11 @@
     <description>iOS, macOS, iPadOS, watchOS — 正式版与测试版更新推送</description>
     <atom:link href="https://eliu-lotso.github.io/os-rss/feed.xml" rel="self" type="application/rss+xml"/>
     <item>
-      <title>Apple OS 更新 (4) — 2026-03-18</title>
+      <title>Apple OS (03-21 00:40)</title>
       <link>https://developer.apple.com/news/releases/</link>
-      <pubDate>Wed, 18 Mar 2026 18:38:45 GMT</pubDate>
-      <guid isPermaLink="false">os-batch-50ab3a4b8046</guid>
-      <description><![CDATA[━━ 测试版 ━━
-▸ iOS 26.4 Rc  (23E244) — iPhone 17 Pro
-▸ iPadOS 26.4 Rc  (23E244) — iPad Pro M5
-▸ macOS 26.4 Rc  (25E243) — MacBook Pro M5
-▸ watchOS 26.4 Rc  (23T239)]]></description>
-    </item>
-    <item>
-      <title>Apple OS 更新 (5) — 2026-03-11</title>
-      <link>https://developer.apple.com/news/releases/</link>
-      <pubDate>Wed, 11 Mar 2026 04:28:42 GMT</pubDate>
-      <guid isPermaLink="false">os-batch-44ee56de50ba</guid>
-      <description><![CDATA[━━ 正式版 ━━
-▸ macOS 26.3.2  (25D2140) — 仅限 MacBook Neo
-━━ 测试版 ━━
-▸ iOS 26.4 Beta 4  (23E5234a) — iPhone 17 Pro
-▸ iPadOS 26.4 Beta 4  (23E5234a) — iPad Pro M5
-▸ macOS 26.4 Beta 4  (25E5233c) — MacBook Pro M5
-▸ watchOS 26.4 Beta 4  (23T5236a)]]></description>
+      <pubDate>Sat, 21 Mar 2026 00:40:25 GMT</pubDate>
+      <guid isPermaLink="false">os-20260321T004025</guid>
+      <description><![CDATA[iOS 26.4 Rc | 测试版 / iPadOS 26.4 Rc | 测试版 / macOS 26.4 Rc | 测试版 / watchOS 26.4 Rc | 测试版]]></description>
     </item>
   </channel>
 </rss>
