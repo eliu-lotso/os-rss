@@ -6,6 +6,15 @@
     <description>iOS, macOS, iPadOS, watchOS — 正式版与测试版更新推送</description>
     <atom:link href="https://eliu-lotso.github.io/os-rss/feed.xml" rel="self" type="application/rss+xml"/>
     <item>
+      <title>Apple OS 更新 (2) — 2026-04-22</title>
+      <link>https://developer.apple.com/news/releases/</link>
+      <pubDate>Wed, 22 Apr 2026 17:57:20 GMT</pubDate>
+      <guid isPermaLink="false">os-batch-c5594b0d5c5e</guid>
+      <description><![CDATA[━━ 正式版 ━━
+▸ iOS 26.4.2  (23E261) — iPhone 17 Pro
+▸ iPadOS 26.4.2  (23E261) — iPad Pro M5]]></description>
+    </item>
+    <item>
       <title>Apple OS 更新 (4) — 2026-04-20</title>
       <link>https://developer.apple.com/news/releases/</link>
       <pubDate>Mon, 20 Apr 2026 17:34:31 GMT</pubDate>
