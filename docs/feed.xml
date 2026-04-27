@@ -6,6 +6,17 @@
     <description>iOS, macOS, iPadOS, watchOS — 正式版与测试版更新推送</description>
     <atom:link href="https://eliu-lotso.github.io/os-rss/feed.xml" rel="self" type="application/rss+xml"/>
     <item>
+      <title>Apple OS 更新 (4) — 2026-04-27</title>
+      <link>https://developer.apple.com/news/releases/</link>
+      <pubDate>Mon, 27 Apr 2026 18:19:10 GMT</pubDate>
+      <guid isPermaLink="false">os-batch-b3e897553dbb</guid>
+      <description><![CDATA[━━ 测试版 ━━
+▸ iOS 26.5 Beta 4  (23F5069b) — iPhone 17 Pro
+▸ iPadOS 26.5 Beta 4  (23F5069b) — iPad Pro M5
+▸ macOS 26.5 Beta 4  (25F5068a) — MacBook Pro M5
+▸ watchOS 26.5 Beta 4  (23T5568a)]]></description>
+    </item>
+    <item>
       <title>Apple OS 更新 (2) — 2026-04-22</title>
       <link>https://developer.apple.com/news/releases/</link>
       <pubDate>Wed, 22 Apr 2026 17:57:20 GMT</pubDate>
