@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Fetch Apple Developer Releases RSS, filter by keywords, and generate a filtered RSS feed."""
 
+import html
 import os
 import re
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
@@ -19,7 +21,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = SCRIPT_DIR / "feeds.yml"
 OUTPUT_DIR = SCRIPT_DIR / "docs"
 OUTPUT_PATH = OUTPUT_DIR / "feed.xml"
-FEED_URL = "https://eliu-lotso.github.io/os-rss/feed.xml"
+FEED_URL = os.getenv("FEED_URL", "https://eliu-lotso.github.io/os-rss/feed.xml")
 
 
 def load_config():
@@ -30,6 +32,17 @@ def load_config():
 VERSION_RE = re.compile(r"^(\w+)\s+(\d+)")
 TITLE_RE = re.compile(
     r"^(iOS|macOS|iPadOS|watchOS)\s+([\d.]+)\s*(?:(beta|RC)\s*(\d*)\s*)?\((\w+)\)$"
+)
+
+SECURITY_ALIAS_RE = re.compile(
+    r"^(macOS|iOS|iPadOS|watchOS|tvOS|visionOS)\s+[A-Za-z][A-Za-z0-9 ]*?\s+(\d)"
+)
+SECURITY_ROW_RE = re.compile(r"<tr[^>]*>(.*?)</tr>", re.S)
+SECURITY_LINK_RE = re.compile(
+    r"<a href=\"(https://support\.apple\.com/en-us/\d+)\"[^>]*>(.*?)</a>", re.S
+)
+SECURITY_DATE_RE = re.compile(
+    r"<td[^>]*>\s*<p[^>]*>\s*(\d{1,2}\s+\w{3}\s+\d{4})", re.S
 )
 
 
@@ -46,7 +59,7 @@ def meets_min_version(title: str, min_version: int) -> bool:
 
 
 def is_within_age(entry, max_age_days: int) -> bool:
-    if not hasattr(entry, "published_parsed") or not entry.published_parsed:
+    if not entry.get("published_parsed"):
         return True
     try:
         pub_dt = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
@@ -56,22 +69,67 @@ def is_within_age(entry, max_age_days: int) -> bool:
         return True
 
 
-def fetch_and_filter(feed_cfg: dict) -> tuple[dict, list]:
+def fetch_rss(feed_cfg: dict) -> tuple[dict, list]:
     url = feed_cfg["url"]
+    print(f"Fetching {url} ...")
+    parsed = feedparser.parse(url)
+    if parsed.bozo and not parsed.entries:
+        print(f"Failed to parse feed: {parsed.bozo_exception}", file=sys.stderr)
+        return parsed.feed, []
+    return parsed.feed, parsed.entries
+
+
+def normalize_security_title(title: str) -> str:
+    m = SECURITY_ALIAS_RE.match(title)
+    if not m:
+        return title
+    return f"{m.group(1)} {m.group(2)}{title[m.end(2):]}"
+
+
+def fetch_apple_security(feed_cfg: dict) -> tuple[dict, list]:
+    url = feed_cfg.get("url", "https://support.apple.com/en-us/100100")
+    print(f"Fetching {url} ...")
+    resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
+    resp.raise_for_status()
+    entries = []
+    for row in SECURITY_ROW_RE.findall(resp.text):
+        link_m = SECURITY_LINK_RE.search(row)
+        if not link_m:
+            continue
+        link, raw_title = link_m.groups()
+        raw_title = html.unescape(raw_title).strip()
+        date_m = SECURITY_DATE_RE.search(row)
+        published = ""
+        published_parsed = None
+        if date_m:
+            published = date_m.group(1)
+            try:
+                published_parsed = time.strptime(published, "%d %b %Y")
+            except ValueError:
+                published_parsed = None
+        entries.append({
+            "title": normalize_security_title(raw_title),
+            "link": link,
+            "published": published,
+            "published_parsed": published_parsed,
+        })
+    return {}, entries
+
+
+def fetch_and_filter(feed_cfg: dict) -> tuple[dict, list]:
+    feed_type = feed_cfg.get("type", "rss")
+    if feed_type == "apple_security":
+        feed_meta, entries = fetch_apple_security(feed_cfg)
+    else:
+        feed_meta, entries = fetch_rss(feed_cfg)
+
     filters = feed_cfg.get("filters", {})
     keywords = filters.get("keywords", [])
     min_version = filters.get("min_version")
     max_age_days = filters.get("max_age_days")
 
-    print(f"Fetching {url} ...")
-    parsed = feedparser.parse(url)
-
-    if parsed.bozo and not parsed.entries:
-        print(f"Failed to parse feed: {parsed.bozo_exception}", file=sys.stderr)
-        return parsed.feed, []
-
     filtered = []
-    for entry in parsed.entries:
+    for entry in entries:
         title = entry.get("title", "")
         if keywords and not matches_keywords(title, keywords):
             continue
@@ -81,7 +139,7 @@ def fetch_and_filter(feed_cfg: dict) -> tuple[dict, list]:
             continue
         filtered.append(entry)
 
-    return parsed.feed, filtered
+    return feed_meta, filtered
 
 
 def parse_title(title: str) -> Optional[dict]:
@@ -119,7 +177,7 @@ def format_description_line(info: dict, pub_date: str) -> str:
 
 
 def format_pub_date_short(entry) -> str:
-    if hasattr(entry, "published_parsed") and entry.published_parsed:
+    if entry.get("published_parsed"):
         try:
             return datetime(*entry.published_parsed[:6]).strftime("%Y-%m-%d")
         except Exception:
@@ -129,7 +187,7 @@ def format_pub_date_short(entry) -> str:
 
 def format_pub_date_gmt(entry) -> str:
     """Convert entry's published_parsed to RFC 822 GMT format."""
-    if hasattr(entry, "published_parsed") and entry.published_parsed:
+    if entry.get("published_parsed"):
         try:
             dt = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
             return dt.strftime("%a, %d %b %Y %H:%M:%S GMT")
