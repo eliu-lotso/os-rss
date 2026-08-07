@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import quote_plus
 from xml.dom import minidom
-from xml.etree import ElementTree
 
 import feedparser
 import requests
@@ -21,6 +20,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = SCRIPT_DIR / "feeds.yml"
 OUTPUT_DIR = SCRIPT_DIR / "docs"
 OUTPUT_PATH = OUTPUT_DIR / "feed.xml"
+STATE_PATH = SCRIPT_DIR / ".last_guids"
 FEED_URL = os.getenv("FEED_URL", "https://eliu-lotso.github.io/os-rss/feed.xml")
 
 
@@ -267,14 +267,18 @@ def build_rss_xml(entries: list, test_mode: bool = False) -> str:
 
 
 def get_existing_guids() -> set:
-    """Read the previous feed.xml and extract all guid values."""
-    if not OUTPUT_PATH.exists():
+    """Read previously seen entry ids/links from the state file."""
+    if not STATE_PATH.exists():
         return set()
     try:
-        tree = ElementTree.parse(OUTPUT_PATH)
-        return {g.text for g in tree.iter("guid") if g.text}
+        return set(STATE_PATH.read_text(encoding="utf-8").splitlines())
     except Exception:
         return set()
+
+
+def save_guids(guids: set):
+    """Persist seen entry ids/links so the next run can dedupe pushes."""
+    STATE_PATH.write_text("\n".join(sorted(guids)), encoding="utf-8")
 
 
 def send_bark(title: str, body: str):
@@ -354,6 +358,7 @@ def main():
     print(f"Generated {OUTPUT_PATH} with {len(all_entries)} item(s).{mode}")
 
     new_guids = {entry.get("id") or entry.get("link", "") for entry in all_entries}
+    save_guids(new_guids)
     truly_new = [
         e for e in all_entries
         if (e.get("id") or e.get("link", "")) not in old_guids

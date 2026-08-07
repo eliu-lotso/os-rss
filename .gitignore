@@ -4,3 +4,4 @@ __pycache__/
 .env
 logs/
 docs/feed.xml
+.last_guids
