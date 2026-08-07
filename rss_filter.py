@@ -2,6 +2,7 @@
 """Fetch Apple Developer Releases RSS, filter by keywords, and generate a filtered RSS feed."""
 
 import html
+import hashlib
 import os
 import re
 import sys
@@ -196,8 +197,70 @@ def format_pub_date_gmt(entry) -> str:
     return datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S GMT")
 
 
+DEVICE_MAP = {
+    "iOS": "iPhone 17 Pro",
+    "iPadOS": "iPad Pro M5",
+    "macOS": "MacBook Pro M5",
+    "watchOS": "",
+}
+
+
+def entry_date(entry) -> str:
+    """Return the entry's publication date as YYYY-MM-DD ('' if unknown)."""
+    pp = entry.get("published_parsed")
+    if pp:
+        try:
+            return datetime(*pp[:6]).strftime("%Y-%m-%d")
+        except Exception:
+            pass
+    return ""
+
+
+def is_beta_entry(entry) -> bool:
+    info = parse_title(entry.get("title", ""))
+    return bool(info and info["is_beta"])
+
+
+def format_entry_line(entry) -> str:
+    """One '▸' line matching the historical feed format."""
+    raw_title = entry.get("title", "")
+    info = parse_title(raw_title)
+    if info:
+        device = DEVICE_MAP.get(info["os"], "")
+        line = f"▸ {info['os']} {info['version']}{info['pre_label']}  ({info['build']})"
+        if device:
+            line += f" — {device}"
+        return line
+    # Fallback for entries without a build number (e.g. security updates).
+    os_key = next((k for k in DEVICE_MAP if raw_title.startswith(k)), None)
+    device = DEVICE_MAP.get(os_key, "") if os_key else ""
+    if device:
+        return f"▸ {raw_title} — {device}"
+    return f"▸ {raw_title}"
+
+
+def group_by_day(entries: list) -> list:
+    """Group entries by publication date, newest day first."""
+    days = {}
+    for e in entries:
+        days.setdefault(entry_date(e), []).append(e)
+    return sorted(days.items(), key=lambda kv: kv[0], reverse=True)
+
+
+def build_batch_text(entries: list) -> str:
+    """'━━ 正式版 ━━' / '━━ 测试版 ━━' blocks with ▸ lines (releases first)."""
+    releases = [e for e in entries if not is_beta_entry(e)]
+    betas = [e for e in entries if is_beta_entry(e)]
+    blocks = []
+    if releases:
+        blocks.append("━━ 正式版 ━━\n" + "\n".join(format_entry_line(e) for e in releases))
+    if betas:
+        blocks.append("━━ 测试版 ━━\n" + "\n".join(format_entry_line(e) for e in betas))
+    return "\n\n".join(blocks)
+
+
 def build_rss_xml(entries: list, test_mode: bool = False) -> str:
-    """Build RSS XML with a single item (matching qweather's proven format)."""
+    """Build RSS XML with one item per publication day (historical format)."""
     impl = minidom.getDOMImplementation()
     doc = impl.createDocument(None, "rss", None)
     rss = doc.documentElement
@@ -213,7 +276,6 @@ def build_rss_xml(entries: list, test_mode: bool = False) -> str:
         return node
 
     now = datetime.now(timezone.utc)
-    timestamp = now.strftime("%Y%m%dT%H%M%S")
     pub_date_rfc = now.strftime("%a, %d %b %Y %H:%M:%S GMT")
 
     channel.appendChild(el("title", "Apple OS Releases"))
@@ -226,42 +288,35 @@ def build_rss_xml(entries: list, test_mode: bool = False) -> str:
     atom_link.setAttribute("type", "application/rss+xml")
     channel.appendChild(atom_link)
 
-    lines = []
-    for entry in entries:
-        raw_title = entry.get("title", "")
-        info = parse_title(raw_title)
-        if info:
-            lines.append(format_title_line(info))
-        else:
-            lines.append(raw_title)
-
-    summary = " / ".join(lines) if lines else "No updates"
-
-    item = doc.createElement("item")
+    def add_item(title: str, desc: str, guid: str):
+        item = doc.createElement("item")
+        item.appendChild(el("title", title))
+        item.appendChild(el("link", "https://developer.apple.com/news/releases/"))
+        item.appendChild(el("pubDate", pub_date_rfc))
+        guid_node = doc.createElement("guid")
+        guid_node.setAttribute("isPermaLink", "false")
+        guid_node.appendChild(doc.createTextNode(guid))
+        item.appendChild(guid_node)
+        desc_node = doc.createElement("description")
+        desc_node.appendChild(doc.createCDATASection(desc))
+        item.appendChild(desc_node)
+        channel.appendChild(item)
 
     if test_mode:
-        item_title = f"[测试] Apple OS 推送测试 ({now.strftime('%m-%d %H:%M:%S')})"
-        item_guid = f"os-test-{timestamp}"
-        item_desc = f"这是一条测试推送 ({now.strftime('%Y-%m-%d %H:%M:%S UTC')})\n实际内容: {summary}"
+        timestamp = now.strftime("%Y%m%dT%H%M%S")
+        test_title = f"[测试] Apple OS 推送测试 ({now.strftime('%m-%d %H:%M:%S')})"
+        test_desc = f"这是一条测试推送 ({now.strftime('%Y-%m-%d %H:%M:%S UTC')})"
+        if entries:
+            test_desc += "\n" + build_batch_text(entries)
+        add_item(test_title, test_desc, f"os-test-{timestamp}")
     else:
-        item_title = f"Apple OS ({now.strftime('%m-%d %H:%M')})"
-        item_guid = f"os-{timestamp}"
-        item_desc = summary
-
-    item.appendChild(el("title", item_title))
-    item.appendChild(el("link", "https://developer.apple.com/news/releases/"))
-    item.appendChild(el("pubDate", pub_date_rfc))
-
-    guid_node = doc.createElement("guid")
-    guid_node.setAttribute("isPermaLink", "false")
-    guid_node.appendChild(doc.createTextNode(item_guid))
-    item.appendChild(guid_node)
-
-    desc_node = doc.createElement("description")
-    desc_node.appendChild(doc.createCDATASection(item_desc))
-    item.appendChild(desc_node)
-
-    channel.appendChild(item)
+        for day, day_entries in group_by_day(entries):
+            desc = build_batch_text(day_entries) or "No updates"
+            title = f"Apple OS 更新 ({len(day_entries)})"
+            if day:
+                title += f" — {day}"
+            digest = hashlib.md5(f"{day}|{desc}".encode("utf-8")).hexdigest()[:12]
+            add_item(title, desc, f"os-batch-{digest}")
 
     return doc.toprettyxml(indent="  ")
 
@@ -312,19 +367,15 @@ def send_slack(title: str, body: str):
 
 
 def build_bark_summary(entries: list) -> tuple:
-    """Build a concise BARK notification from a list of entries."""
-    lines = []
-    for entry in entries:
-        raw_title = entry.get("title", "")
-        info = parse_title(raw_title)
-        if info:
-            tag = info["pre_label"] if info["is_beta"] else ""
-            release = "测试版" if info["is_beta"] else "正式版"
-            lines.append(f"{info['os']} {info['version']}{tag} {release}")
-        else:
-            lines.append(raw_title)
+    """Build a BARK notification in the historical feed format."""
+    if not entries:
+        return "Apple OS 更新 (0)", "No updates"
+    days = group_by_day(entries)
+    latest_day = days[0][0]
     title = f"Apple OS 更新 ({len(entries)})"
-    body = "\n".join(lines)
+    if latest_day:
+        title += f" — {latest_day}"
+    body = build_batch_text(entries) or "No updates"
     return title, body
 
 
