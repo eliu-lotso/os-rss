@@ -5,12 +5,10 @@ import html
 import hashlib
 import os
 import re
-import sys
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
-from urllib.parse import quote_plus
 from xml.dom import minidom
 
 import feedparser
@@ -60,14 +58,12 @@ def meets_min_version(title: str, min_version: int) -> bool:
 
 
 def is_within_age(entry, max_age_days: int) -> bool:
-    if not entry.get("published_parsed"):
+    published_parsed = entry.get("published_parsed")
+    if not published_parsed:
         return True
-    try:
-        pub_dt = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
-        cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
-        return pub_dt >= cutoff
-    except Exception:
-        return True
+    pub_dt = datetime(*published_parsed[:6], tzinfo=timezone.utc)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
+    return pub_dt >= cutoff
 
 
 def fetch_rss(feed_cfg: dict) -> tuple[dict, list]:
@@ -75,8 +71,7 @@ def fetch_rss(feed_cfg: dict) -> tuple[dict, list]:
     print(f"Fetching {url} ...")
     parsed = feedparser.parse(url)
     if parsed.bozo and not parsed.entries:
-        print(f"Failed to parse feed: {parsed.bozo_exception}", file=sys.stderr)
-        return parsed.feed, []
+        raise RuntimeError(f"Failed to parse feed: {parsed.bozo_exception}") from parsed.bozo_exception
     return parsed.feed, parsed.entries
 
 
@@ -325,10 +320,7 @@ def get_existing_guids() -> set:
     """Read previously seen entry ids/links from the state file."""
     if not STATE_PATH.exists():
         return set()
-    try:
-        return set(STATE_PATH.read_text(encoding="utf-8").splitlines())
-    except Exception:
-        return set()
+    return set(STATE_PATH.read_text(encoding="utf-8").splitlines())
 
 
 def save_guids(guids: set):
@@ -339,15 +331,20 @@ def save_guids(guids: set):
 def send_bark(title: str, body: str):
     bark_key = os.getenv("BARK_KEY")
     if not bark_key:
-        print("[BARK] No BARK_KEY set, skipping push.")
-        return
-    url = f"https://api.day.app/{bark_key}/{quote_plus(title)}/{quote_plus(body)}"
-    try:
-        r = requests.get(url, params={"group": "Apple OS", "icon": "https://developer.apple.com/favicon.ico"}, timeout=10)
-        r.raise_for_status()
-        print("[BARK] Push sent successfully.")
-    except Exception as e:
-        print(f"[BARK] Push failed: {e}")
+        raise RuntimeError("[BARK] BARK_KEY is required.")
+    payload = {
+        "device_key": bark_key,
+        "title": title,
+        "body": body,
+        "group": "Apple OS",
+        "icon": "https://developer.apple.com/favicon.ico",
+    }
+    r = requests.post("https://api.day.app/push", json=payload, timeout=10)
+    r.raise_for_status()
+    result = r.json()
+    if result["code"] != 200:
+        raise RuntimeError(f"[BARK] Push failed ({result['code']}): {result['message']}")
+    print("[BARK] Push sent successfully.")
 
 
 def send_slack(title: str, body: str):
@@ -358,12 +355,9 @@ def send_slack(title: str, body: str):
     payload = {
         "text": f"*{title}*\n{body}",
     }
-    try:
-        r = requests.post(webhook_url, json=payload, timeout=10)
-        r.raise_for_status()
-        print("[SLACK] Push sent successfully.")
-    except Exception as e:
-        print(f"[SLACK] Push failed: {e}")
+    r = requests.post(webhook_url, json=payload, timeout=10)
+    r.raise_for_status()
+    print("[SLACK] Push sent successfully.")
 
 
 def build_bark_summary(entries: list) -> tuple:
@@ -409,7 +403,6 @@ def main():
     print(f"Generated {OUTPUT_PATH} with {len(all_entries)} item(s).{mode}")
 
     new_guids = {entry.get("id") or entry.get("link", "") for entry in all_entries}
-    save_guids(new_guids)
     truly_new = [
         e for e in all_entries
         if (e.get("id") or e.get("link", "")) not in old_guids
@@ -419,13 +412,16 @@ def main():
         print(f"  {len(truly_new)} new item(s) detected, sending push.")
         title, body = build_bark_summary(truly_new)
         send_bark(title, body)
+        save_guids(new_guids)
         send_slack(title, body)
     elif args.test:
         print("  Test mode: sending push for all items.")
         title, body = build_bark_summary(all_entries)
         send_bark(title, body)
+        save_guids(new_guids)
         send_slack(title, body)
     else:
+        save_guids(new_guids)
         print("  No new items, skipping push.")
 
 
