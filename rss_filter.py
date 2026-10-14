@@ -192,14 +192,6 @@ def format_pub_date_gmt(entry) -> str:
     return datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S GMT")
 
 
-DEVICE_MAP = {
-    "iOS": "iPhone 17 Pro",
-    "iPadOS": "iPad Pro M5",
-    "macOS": "MacBook Pro M5",
-    "watchOS": "",
-}
-
-
 def entry_date(entry) -> str:
     """Return the entry's publication date as YYYY-MM-DD ('' if unknown)."""
     pp = entry.get("published_parsed")
@@ -221,16 +213,7 @@ def format_entry_line(entry) -> str:
     raw_title = entry.get("title", "")
     info = parse_title(raw_title)
     if info:
-        device = DEVICE_MAP.get(info["os"], "")
-        line = f"▸ {info['os']} {info['version']}{info['pre_label']}  ({info['build']})"
-        if device:
-            line += f" — {device}"
-        return line
-    # Fallback for entries without a build number (e.g. security updates).
-    os_key = next((k for k in DEVICE_MAP if raw_title.startswith(k)), None)
-    device = DEVICE_MAP.get(os_key, "") if os_key else ""
-    if device:
-        return f"▸ {raw_title} — {device}"
+        return f"▸ {info['os']} {info['version']}{info['pre_label']}  ({info['build']})"
     return f"▸ {raw_title}"
 
 

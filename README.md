@@ -32,6 +32,7 @@ https://eliu-lotso.github.io/os-rss/feed.xml
 
 - GitHub Actions 每 15 分钟拉取一次两个 Apple 官方更新源
 - 过滤出标题以 iOS / macOS / iPadOS / watchOS 开头的条目
+- 展示官方发布条目的系统版本与 Build，保留标题中的机型限制说明
 - 生成过滤后的 RSS XML 文件到 `docs/feed.xml`
 - 通过 GitHub Pages artifact 发布为公开 URL，无需提交生成的 XML
 
